@@ -14,6 +14,11 @@
 #include "logger.h"
 
 #include <hb-ft.h>
+#include <hb-coretext.h>
+
+#ifdef __OBJC__
+#import <Foundation/Foundation.h>
+#endif
 
 // See http://www.microsoft.com/typography/otspec/name.htm for a list of some
 // possible platform-encoding pairs.  We're interested in 0-3 aka 3-1 - UCS-2.
@@ -102,7 +107,23 @@ bool FontFace::load() {
         }
     }
 
-    if (m_descriptor.source.isUri()) {
+    if (m_descriptor.source.isAppleFont()) {
+        #if defined(TANGRAM_OSX)  || defined(TANGRAM_IOS)
+            auto& fontName = m_descriptor.source.uri();
+            CFStringRef name = CFStringCreateWithCString(NULL, fontName.c_str(), kCFStringEncodingUTF8);
+            CGFontRef cg_font = CGFontCreateWithFontName(name);
+            if (!cg_font) {
+                LOGE("Cannot create font with name '%s'", fontName.c_str());
+                return false;
+            }
+            hb_font_t *font = hb_font_create(hb_coretext_face_create(cg_font));
+            m_ftFace = hb_ft_font_get_face(font);
+            CGFontRelease(cg_font);
+        #else
+            return false;
+        #endif
+    }
+    else if (m_descriptor.source.isUri()) {
         error = FT_New_Face(m_ft.getLib(),
                             m_descriptor.source.uri().c_str(),
                             m_descriptor.faceIndex, &m_ftFace);
@@ -146,7 +167,7 @@ bool FontFace::load() {
                      dpi,       // horizontal_resolution
                      dpi);      // vertical_resolution
 
-    // This must take place after ftFace is properly scaled and transformed
+
     m_hbFont = hb_ft_font_create(m_ftFace, nullptr);
 
     m_metrics.height = m_ftFace->size->metrics.height / 64.f;

@@ -15,7 +15,7 @@ target_include_directories (linebreak
 add_library (alfons
   alfons/alfons.cpp
   alfons/fontManager.cpp
-  alfons/fontFace.cpp
+  alfons/fontFace.mm
   alfons/langHelper.cpp
   alfons/font.cpp
   alfons/textBatch.cpp
